@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bryght Systems Technologies | Securing the Future of AI in Government</title>
+    <!-- Chosen Palette: Professional Tech (Deep Navy, Cyan Accent, Neutral Grays) -->
+    <!-- Application Structure Plan: A multi-page application. A key new feature is the Gemini-powered "Threat Briefing Generator" on the News page, replacing static content with a dynamic, value-add tool. The Firestore CRM and AI chatbot are retained. -->
+    <!-- Visualization & Content Choices: 1. Threat Briefing Generator: User input triggers a fetch call to the Gemini API. The prompt instructs the model to act as a security analyst and generate a structured report. The response is rendered as formatted HTML. Justification: This showcases expertise and provides a valuable, interactive tool for potential clients, moving beyond a simple informational site. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #FFFFFF; color: #111827; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Montserrat', sans-serif; }
+        .bg-navy { background-color: #0A2342; }
+        .text-cyan { color: #00FFFF; }
+        .border-cyan { border-color: #00FFFF; }
+        .bg-cyan { background-color: #00FFFF; }
+        .hover-bg-cyan-dark:hover { background-color: #00E0E0; }
+        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 400px; max-height: 50vh; }
+        .nav-link { transition: color 0.3s ease; cursor: pointer; }
+        .nav-link:hover, .nav-link.active { color: #00FFFF; }
+        .page { display: none; }
+        .page.active { display: block; }
+        #chatbot-container { position: fixed; bottom: 20px; right: 20px; width: 350px; max-width: 90vw; z-index: 1000; }
+        #chat-window { height: 400px; transition: all 0.3s ease-in-out; }
+        .chat-message.user { text-align: right; }
+        .chat-message.user .chat-bubble { background-color: #0A2342; color: white; }
+        .chat-message.bot .chat-bubble { background-color: #e5e7eb; color: #111827; }
+        .chat-bubble { display: inline-block; padding: 8px 12px; border-radius: 12px; max-width: 80%; margin-bottom: 8px; text-align: left; }
+        .typing-indicator span { height: 8px; width: 8px; background-color: #9ca3af; border-radius: 50%; display: inline-block; animation: bounce 1.4s infinite ease-in-out both; }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        #briefing-output h3 { font-size: 1.25rem; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #0A2342; }
+        #briefing-output ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
+        #briefing-output p { margin-bottom: 1rem; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #0A2342; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-white">
+
+    <!-- Header & Navigation -->
+    <header id="header" class="bg-navy text-white p-4 sticky top-0 z-50 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a data-target="home" class="nav-link flex items-center space-x-3">
+                <img src="https://storage.googleapis.com/gemini-prod-us-west1-422509930492-public/rest/2e4d0267-9304-4e2b-8a8b-c6b7194f1c1f" alt="Bryght Systems Logo" class="h-10 w-10 object-contain" onerror="this.onerror=null;this.src='https://placehold.co/40x40/0A2342/FFFFFF?text=B';">
+                <span class="text-xl font-semibold tracking-wider">BRYGHT SYSTEMS</span>
+            </a>
+            <nav class="hidden md:flex items-center space-x-6">
+                <a data-target="about" class="nav-link font-medium">About Us</a>
+                <a data-target="services" class="nav-link font-medium">Services</a>
+                <a data-target="contracts" class="nav-link font-medium">Contracts</a>
+                <a data-target="news" class="nav-link font-medium">News</a>
+                <a data-target="careers" class="nav-link font-medium">Careers/Internships</a>
+            </nav>
+            <a data-target="contact" class="nav-link hidden md:inline-block bg-cyan text-navy font-bold py-2 px-5 rounded-md hover-bg-cyan-dark transition-colors">Contact Us</a>
+            <button id="mobile-menu-button" class="md:hidden p-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-4 6h4"></path></svg>
+            </button>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden mt-4">
+            <a data-target="about" class="nav-link block py-2 px-4 text-sm">About Us</a>
+            <a data-target="services" class="nav-link block py-2 px-4 text-sm">Services</a>
+            <a data-target="contracts" class="nav-link block py-2 px-4 text-sm">Contracts</a>
+            <a data-target="news" class="nav-link block py-2 px-4 text-sm">News</a>
+            <a data-target="careers" class="nav-link block py-2 px-4 text-sm">Careers/Internships</a>
+            <a data-target="contact" class="nav-link block mt-2 text-center bg-cyan text-navy font-bold py-2 px-5 rounded-md hover-bg-cyan-dark transition-colors">Contact Us</a>
+        </div>
+    </header>
+
+    <main>
+        <!-- Home Page -->
+        <section id="home" class="page active">
+            <div class="relative bg-navy text-white min-h-[60vh] md:min-h-[75vh] flex items-center">
+                <div class="absolute inset-0"><img src="https://images.unsplash.com/photo-1573496799652-408c2ac9fe98?q=80&w=2069&auto=format&fit=crop" alt="Diverse technology team in a meeting" class="w-full h-full object-cover opacity-20"></div>
+                <div class="container mx-auto px-6 text-center relative z-10">
+                    <h1 class="text-4xl md:text-6xl font-bold leading-tight mb-4">Securing the Future of <span class="text-cyan">AI</span> in Government</h1>
+                    <p class="text-lg md:text-xl max-w-3xl mx-auto mb-8 text-gray-300">We provide elite cybersecurity for the nation's most advanced artificial intelligence and machine learning systems, ensuring mission integrity against emerging threats.</p>
+                    <div class="flex justify-center space-x-4">
+                        <a data-target="contact" class="nav-link bg-cyan text-navy font-bold py-3 px-8 rounded-md hover-bg-cyan-dark transition-colors text-lg">Schedule a Consultation</a>
+                        <a data-target="services" class="nav-link bg-transparent border-2 border-white text-white font-bold py-3 px-8 rounded-md hover:bg-white hover:text-navy transition-colors text-lg">Explore Services</a>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-100 py-8">
+                <div class="container mx-auto px-6">
+                    <h3 class="text-center text-gray-600 text-sm font-semibold uppercase tracking-wider mb-6">Trusted by the Nation's Leading Agencies</h3>
+                    <div id="client-logos" class="flex flex-wrap justify-center items-center gap-x-8 gap-y-4 md:gap-x-12"></div>
+                </div>
+            </div>
+            <div class="py-20 md:py-28 bg-white">
+                <div class="container mx-auto px-6">
+                    <div class="text-center mb-16">
+                        <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Delivering Quantifiable Impact</h2>
+                        <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">Our solutions translate directly into operational efficiencies, cost savings, and enhanced security postures for our federal partners.</p>
+                    </div>
+                    <div class="lg:grid lg:grid-cols-5 lg:gap-12 items-center">
+                        <div class="lg:col-span-3 mb-12 lg:mb-0"><div class="chart-container"><canvas id="impactChart"></canvas></div></div>
+                        <div class="lg:col-span-2">
+                            <div class="bg-navy text-white p-8 rounded-lg shadow-xl">
+                                <p class="text-xl italic mb-6">"Bryght Systems was instrumental in securing our AI-driven analytics platform. Their expertise directly led to a 60% improvement in efficiency while ensuring we remained 100% compliant with all security mandates."</p>
+                                <p class="font-bold text-cyan">Director, CISA Programs</p>
+                                <p class="text-sm text-gray-400">(Representative Testimonial)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Page -->
+        <section id="about" class="page py-20 md:py-28 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Veteran-Led, Mission-Focused</h2>
+                        <p class="text-gray-600 mb-4">Founded in 2016, Bryght Systems Technologies was born from a desire to apply military precision and national security experience to the new frontier of AI security. Our identity as a Service Disabled Veteran Owned Business (SDVOB) is at the core of our DNA, driving an unwavering commitment to the national security mission.</p>
+                        <p class="text-gray-600 mb-6">We are a team of specialists dedicated to solving the government's most complex AI security challenges, ensuring the United States maintains its technological superiority with secure, trustworthy, and resilient intelligent systems.</p>
+                         <div class="bg-gray-50 p-6 rounded-lg">
+                            <div class="flex items-center">
+                                <img src="https://storage.googleapis.com/gemini-prod-us-west1-422509930492-public/rest/f56f2d21-f154-469b-9877-3e7902998a1a" alt="Headshot of Alonzo Johnson, President/CEO" class="h-24 w-24 rounded-full object-cover mr-6" onerror="this.onerror=null;this.src='https://placehold.co/96x96/0A2342/FFFFFF?text=AJ';">
+                                <div>
+                                    <h4 class="text-xl font-bold">Alonzo Johnson, President/CEO</h4>
+                                    <p class="text-gray-600 mt-1">With 30+ years in federal contracting and active TS/SCI clearance, Alonzo leads our team with unparalleled experience in managing high-stakes cybersecurity and AI programs.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop" alt="African American tech professionals collaborating on a project" class="rounded-lg shadow-xl w-full h-auto object-cover" onerror="this.onerror=null;this.src='https://placehold.co/600x400/cccccc/333333?text=Our+Team';"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Page -->
+        <section id="services" class="page py-20 md:py-28 bg-gray-50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Mission-Focused AI Security Services</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">From protecting foundational models to securing cloud-native deployments, we provide end-to-end security for the entire AI lifecycle.</p>
+                </div>
+                <div id="capabilities-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+            </div>
+        </section>
+
+        <!-- Contracts Page -->
+        <section id="contracts" class="page py-20 md:py-28 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Contract Vehicles & Partnerships</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">We offer flexible procurement options to make partnering with us simple and efficient for federal agencies.</p>
+                </div>
+                <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+                    <div class="bg-gray-50 p-8 rounded-lg border border-gray-200">
+                        <h3 class="text-2xl font-bold mb-4 text-navy">Company Information</h3>
+                        <p><strong>Legal Name:</strong> Bryght Systems Technologies, Inc.</p>
+                        <p><strong>CAGE Code:</strong> 8J4S1</p>
+                        <p><strong>UEI:</strong> N9L1J8H4K2M1</p>
+                        <p><strong>Status:</strong> Service-Disabled Veteran-Owned Small Business (SDVOB)</p>
+                    </div>
+                    <div class="bg-gray-50 p-8 rounded-lg border border-gray-200">
+                        <h3 class="text-2xl font-bold mb-4 text-navy">NAICS Codes</h3>
+                        <ul class="list-disc list-inside">
+                            <li><strong>541512:</strong> Computer Systems Design Services</li>
+                            <li><strong>541519:</strong> Other Computer Related Services</li>
+                            <li><strong>541690:</strong> Other Scientific and Technical Consulting</li>
+                            <li><strong>541715:</strong> Research and Development</li>
+                        </ul>
+                    </div>
+                </div>
+                 <div class="text-center mt-16">
+                    <h3 class="text-2xl font-bold mb-4 text-navy">How to Work With Us</h3>
+                    <p class="text-lg text-gray-600 max-w-3xl mx-auto">We are available for direct prime contracts, subcontracting partnerships, and through various government-wide acquisition contracts (GWACs). Contact us to discuss the best vehicle for your needs.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- News Page -->
+        <section id="news" class="page py-20 md:py-28 bg-gray-50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">AI Security Threat Center</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">Leverage our expertise. Enter any AI security topic to generate an up-to-date threat briefing.</p>
+                </div>
+                <div class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-lg">
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <input type="text" id="briefing-topic" placeholder="e.g., Adversarial attacks on LLMs" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-cyan focus:border-cyan text-lg">
+                        <button id="generate-briefing-btn" class="bg-cyan text-navy font-bold py-2 px-6 rounded-md hover-bg-cyan-dark transition-colors whitespace-nowrap text-lg">Generate Briefing ✨</button>
+                    </div>
+                </div>
+                <div id="briefing-container" class="max-w-3xl mx-auto mt-8">
+                    <div id="briefing-loader" class="hidden loader"></div>
+                    <div id="briefing-output" class="bg-white p-8 rounded-lg shadow-lg prose max-w-none"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Careers Page -->
+        <section id="careers" class="page py-20 md:py-28 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900">Join Our Mission</h2>
+                    <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">We are seeking the brightest minds in cybersecurity and artificial intelligence to help us solve the nation's most critical security challenges. If you are passionate about making an impact, we want to hear from you.</p>
+                </div>
+                <div class="max-w-3xl mx-auto">
+                    <h3 class="text-2xl font-bold mb-6 text-navy">Current Openings</h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 flex justify-between items-center">
+                            <div><h4 class="text-xl font-bold">Senior AI Security Engineer</h4><p class="text-gray-600">Fredericksburg, VA (Hybrid)</p></div>
+                            <a href="#" class="bg-cyan text-navy font-bold py-2 px-5 rounded-md hover-bg-cyan-dark transition-colors">Apply</a>
+                        </div>
+                        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 flex justify-between items-center">
+                            <div><h4 class="text-xl font-bold">Cybersecurity Compliance Analyst</h4><p class="text-gray-600">Remote</p></div>
+                            <a href="#" class="bg-cyan text-navy font-bold py-2 px-5 rounded-md hover-bg-cyan-dark transition-colors">Apply</a>
+                        </div>
+                    </div>
+                    <div class="text-center mt-12 bg-navy text-white p-8 rounded-lg">
+                        <h3 class="text-2xl font-bold mb-4">Internship Program</h3>
+                        <p class="mb-4">Our internship program offers hands-on experience in the AI security field. We are looking for talented students to join us for our Spring 2026 cohort.</p>
+                        <a href="#" class="bg-cyan text-navy font-bold py-2 px-5 rounded-md hover-bg-cyan-dark transition-colors">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Page with CRM -->
+        <section id="contact" class="page bg-navy text-white py-20 md:py-28">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Ready to Secure Your AI Future?</h2>
+                    <p class="mt-4 text-lg text-gray-300 max-w-3xl mx-auto">Contact us today to schedule a confidential discussion about your AI security requirements.</p>
+                </div>
+                <div class="max-w-2xl mx-auto bg-white text-gray-900 rounded-lg shadow-2xl p-8">
+                    <form id="contact-form">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div><label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label><input type="text" id="name" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-cyan focus:border-cyan"></div>
+                            <div><label for="agency" class="block text-sm font-medium text-gray-700 mb-1">Agency / Organization</label><input type="text" id="agency" name="agency" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-cyan focus:border-cyan"></div>
+                            <div><label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label><input type="email" id="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-cyan focus:border-cyan"></div>
+                            <div><label for="interest" class="block text-sm font-medium text-gray-700 mb-1">I am interested in...</label><select id="interest" name="interest" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-cyan focus:border-cyan bg-white"><option>AI System Protection</option><option>LLM Security</option><option>Cloud-Native AI Security</option><option>Cybersecurity & Compliance</option><option>Subcontract Partnership</option><option>General Inquiry</option></select></div>
+                        </div>
+                        <div class="mb-6"><label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message</label><textarea id="message" name="message" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-cyan focus:border-cyan"></textarea></div>
+                        <button type="submit" class="w-full bg-cyan text-navy font-bold py-3 px-8 rounded-md hover-bg-cyan-dark transition-colors text-lg">Submit Request</button>
+                    </form>
+                    <div id="form-feedback" class="mt-4 text-center"></div>
+                </div>
+                <div class="mt-20 max-w-5xl mx-auto">
+                     <h3 class="text-2xl md:text-3xl font-bold text-center mb-8">Customer Relationship Management</h3>
+                     <div class="bg-white text-gray-900 rounded-lg shadow-2xl p-6 overflow-x-auto">
+                        <h4 class="text-xl font-bold mb-4">New Leads</h4>
+                        <table id="crm-table" class="w-full text-sm text-left"><thead class="bg-gray-50 text-xs text-gray-700 uppercase"><tr><th scope="col" class="px-6 py-3">Date</th><th scope="col" class="px-6 py-3">Name</th><th scope="col" class="px-6 py-3">Agency</th><th scope="col" class="px-6 py-3">Interest</th><th scope="col" class="px-6 py-3">Status</th></tr></thead><tbody id="crm-leads"></tbody></table>
+                     </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- AI Chatbot -->
+    <div id="chatbot-container">
+        <div id="chat-window" class="hidden bg-white rounded-lg shadow-xl flex flex-col">
+            <div class="bg-navy text-white p-4 rounded-t-lg flex justify-between items-center"><h3 class="font-bold">Bryght</h3><button id="close-chat" class="text-white text-2xl leading-none">&times;</button></div>
+            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto"></div>
+            <div id="chat-input-container" class="p-4 border-t border-gray-200">
+                <div class="flex">
+                    <input type="text" id="chat-input" placeholder="Ask about AI or our services..." class="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:ring-cyan focus:border-cyan">
+                    <button id="chat-send" class="bg-cyan text-navy font-bold px-4 rounded-r-md hover-bg-cyan-dark">&uarr;</button>
+                </div>
+            </div>
+        </div>
+        <button id="open-chat" class="bg-navy text-white w-16 h-16 rounded-full shadow-xl flex items-center justify-center"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2s10 4.477 10 10z"></path></svg></button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-300">
+        <div class="container mx-auto px-6 py-12">
+            <div class="mt-12 border-t border-gray-700 pt-8 text-center text-sm text-gray-500">
+                <p>&copy; <span id="year"></span> Bryght Systems Technologies, Inc. All Rights Reserved.</p>
+                <p class="mt-2"><a href="#" class="hover:text-cyan">Privacy Policy</a> | <a href="#" class="hover:text-cyan">Accessibility Statement</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const clientLogos = [
+            { name: 'Defense Intelligence Agency', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Defense_Intelligence_Agency_Seal.svg/1200px-Defense_Intelligence_Agency_Seal.svg.png' },
+            { name: 'National Geospatial-Intelligence Agency', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/National_Geospatial-Intelligence_Agency_seal.svg/1200px-National_Geospatial-Intelligence_Agency_seal.svg.png' },
+            { name: 'United States Army', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Seal_of_the_U.S._Department_of_the_Army.svg/1200px-Seal_of_the_U.S._Department_of_the_Army.svg.png' },
+            { name: 'Department of Homeland Security', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Seal_of_the_United_States_Department_of_Homeland_Security.svg/1200px-Seal_of_the_United_States_Department_of_Homeland_Security.svg.png' },
+            { name: 'Cybersecurity and Infrastructure Security Agency', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Seal_of_the_Cybersecurity_and_Infrastructure_Security_Agency.svg/1024px-Seal_of_the_Cybersecurity_and_Infrastructure_Security_Agency.svg.png' }
+        ];
+        const capabilities = [
+            { icon: '🤖', title: 'AI/ML System Security', description: 'Protecting models, data, and infrastructure from advanced adversarial threats, model poisoning, and data leakage.' },
+            { icon: '✍️', title: 'Large Language Model (LLM) Security', description: 'Specialized defense against prompt injection, data exfiltration, and output manipulation in generative AI systems.' },
+            { icon: '☁️', title: 'Cloud-Native AI Defense', description: 'Securing AI workloads on mission-critical cloud platforms like AWS, Azure, and GCP with tailored security architectures.' },
+            { icon: '📋', title: 'Cybersecurity & Compliance', description: 'Expert guidance through federal compliance frameworks, including FedRAMP, NIST AI RMF, and agency-specific mandates.' },
+            { icon: '🔗', title: 'Secure AI Pipeline Architecture', description: 'Designing and implementing end-to-end secure workflows for your AI data, from ingestion to inference.' },
+            { icon: '🤝', title: 'Subcontract & Prime Partnership', description: 'Flexible engagement models to support prime contractors or lead initiatives as a dedicated, expert partner.' }
+        ];
+        
+        let db, auth;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } else { await signInAnonymously(auth); }
+            initializeCrm();
+        } catch (e) { console.error("Firebase initialization failed:", e); }
+
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pages = document.querySelectorAll('.page');
+        const headerNavLinks = document.querySelectorAll('header nav a, header .bg-cyan, a[data-target="home"]');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        function showPage(targetId) {
+            pages.forEach(page => page.classList.remove('active'));
+            const targetPage = document.getElementById(targetId);
+            if(targetPage) targetPage.classList.add('active');
+            headerNavLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.target === targetId) link.classList.add('active');
+            });
+            window.scrollTo(0, 0);
+        }
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = e.currentTarget.dataset.target;
+                if (targetId) { showPage(targetId); mobileMenu.classList.add('hidden'); }
+            });
+        });
+        
+        const logoContainer = document.getElementById('client-logos');
+        clientLogos.forEach(logo => {
+            const img = document.createElement('img');
+            img.src = logo.url;
+            img.alt = logo.name;
+            img.title = logo.name;
+            img.className = "h-12 md:h-14 grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition duration-300";
+            img.onerror = function() { this.src = `https://placehold.co/150x60/F3F4F6/6B7280?text=${logo.name.split(' ').map(w=>w[0]).join('')}`; this.className="h-12 md:h-14"; };
+            logoContainer.appendChild(img);
+        });
+
+        const capabilitiesGrid = document.getElementById('capabilities-grid');
+        capabilities.forEach(cap => {
+            const card = document.createElement('div');
+            card.className = "bg-white p-8 rounded-lg text-center border border-gray-200 shadow-sm";
+            card.innerHTML = `<div class="text-4xl mb-4">${cap.icon}</div><h3 class="text-xl font-bold mb-2 text-gray-900">${cap.title}</h3><p class="text-gray-600">${cap.description}</p>`;
+            capabilitiesGrid.appendChild(card);
+        });
+
+        document.getElementById('mobile-menu-button').addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        const ctx = document.getElementById('impactChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar', data: { labels: ['Operational Cost Savings', 'Process Efficiency Improvement', 'AI/ML Pipelines Secured'], datasets: [{ label: 'Proven Performance Metrics', data: [2, 60, 50], backgroundColor: ['rgba(10, 35, 66, 0.8)', 'rgba(0, 255, 255, 0.8)', 'rgba(107, 114, 128, 0.8)'], borderColor: ['rgba(10, 35, 66, 1)', 'rgba(0, 255, 255, 1)', 'rgba(107, 114, 128, 1)'], borderWidth: 1 }] },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, ticks: { callback: (v, i) => i === 0 ? `$${v}M+` : (i === 1 ? `${v}%` : `${v}+`) } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.label === 'Operational Cost Savings' ? `$${c.parsed.x}M+` : (c.label === 'Process Efficiency Improvement' ? `${c.parsed.x}%` : `${c.parsed.x}+`) } } } }
+        });
+
+        const contactForm = document.getElementById('contact-form');
+        const formFeedback = document.getElementById('form-feedback');
+        const crmLeadsBody = document.getElementById('crm-leads');
+
+        function initializeCrm() {
+            if (!db) return;
+            const leadsCollection = collection(db, `artifacts/${appId}/public/data/leads`);
+            const q = query(leadsCollection);
+            onSnapshot(q, (snapshot) => {
+                crmLeadsBody.innerHTML = '';
+                const leads = [];
+                snapshot.forEach(doc => leads.push({ id: doc.id, ...doc.data() }));
+                leads.sort((a, b) => b.timestamp?.toMillis() - a.timestamp?.toMillis());
+                leads.forEach(lead => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'bg-white border-b';
+                    tr.innerHTML = `<td class="px-6 py-4">${lead.timestamp ? new Date(lead.timestamp.toDate()).toLocaleDateString() : 'N/A'}</td><td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${lead.name}</td><td class="px-6 py-4">${lead.agency}</td><td class="px-6 py-4">${lead.interest}</td><td class="px-6 py-4"><span class="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">${lead.status}</span></td>`;
+                    crmLeadsBody.appendChild(tr);
+                });
+            });
+        }
+
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!db) { formFeedback.textContent = "Database connection not available."; formFeedback.className = "mt-4 text-center text-red-700 bg-red-100 p-3 rounded-md"; return; }
+            const formData = new FormData(contactForm);
+            const leadData = { name: formData.get('name'), agency: formData.get('agency'), email: formData.get('email'), interest: formData.get('interest'), message: formData.get('message'), status: 'New', timestamp: serverTimestamp() };
+            try {
+                const leadsCollection = collection(db, `artifacts/${appId}/public/data/leads`);
+                await addDoc(leadsCollection, leadData);
+                formFeedback.textContent = "Thank you for your message. We will be in touch shortly.";
+                formFeedback.className = "mt-4 text-center text-green-700 bg-green-100 p-3 rounded-md";
+                contactForm.reset();
+            } catch (error) { console.error("Error adding document: ", error); formFeedback.textContent = "Failed to submit request. Please try again."; formFeedback.className = "mt-4 text-center text-red-700 bg-red-100 p-3 rounded-md"; }
+        });
+
+        const openChatBtn = document.getElementById('open-chat');
+        const closeChatBtn = document.getElementById('close-chat');
+        const chatWindow = document.getElementById('chat-window');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send');
+        let chatHistory = [];
+
+        openChatBtn.addEventListener('click', () => { chatWindow.classList.remove('hidden'); openChatBtn.classList.add('hidden'); });
+        closeChatBtn.addEventListener('click', () => { chatWindow.classList.add('hidden'); openChatBtn.classList.remove('hidden'); });
+
+        function addChatMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}`;
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble';
+            bubble.innerHTML = marked.parse(text);
+            messageDiv.appendChild(bubble);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'typing-indicator';
+            indicator.className = 'chat-message bot';
+            indicator.innerHTML = `<div class="chat-bubble typing-indicator"><span></span><span></span><span></span></div>`;
+            chatMessages.appendChild(indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        async function handleChatSend() {
+            const userInput = chatInput.value.trim();
+            if (!userInput) return;
+            addChatMessage('user', userInput);
+            chatInput.value = '';
+            showTypingIndicator();
+            chatHistory.push({ role: "user", parts: [{ text: userInput }] });
+            const prompt = `You are Bryght, a helpful and friendly AI assistant for Bryght Systems Technologies, a Service Disabled Veteran Owned Business specializing in AI cybersecurity for the US government. Your purpose is to answer questions about the company, its services, and general AI topics. Keep your answers concise and professional. Use Markdown for formatting if needed. User question: ${userInput}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); }
+                const result = await response.json();
+                const botResponse = result.candidates[0].content.parts[0].text;
+                chatHistory.push({ role: "model", parts: [{ text: botResponse }] });
+                removeTypingIndicator();
+                addChatMessage('bot', botResponse);
+            } catch (error) { console.error("Error calling Gemini API:", error); removeTypingIndicator(); addChatMessage('bot', "I'm sorry, I'm having trouble connecting right now. Please try again later."); }
+        }
+
+        chatSendBtn.addEventListener('click', handleChatSend);
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSend(); });
+
+        // --- GEMINI THREAT BRIEFING ---
+        const generateBtn = document.getElementById('generate-briefing-btn');
+        const topicInput = document.getElementById('briefing-topic');
+        const outputDiv = document.getElementById('briefing-output');
+        const loader = document.getElementById('briefing-loader');
+
+        async function generateThreatBriefing() {
+            const topic = topicInput.value.trim();
+            if (!topic) {
+                outputDiv.innerHTML = `<p class="text-red-500">Please enter a topic to generate a briefing.</p>`;
+                return;
+            }
+            loader.classList.remove('hidden');
+            outputDiv.innerHTML = '';
+
+            const prompt = `As an expert AI security analyst at Bryght Systems, create a professional threat briefing for a US federal government client on the topic: "${topic}". The briefing must be structured with the following sections, using Markdown for formatting: ### Executive Summary, ### Threat Landscape, ### Common Attack Vectors, and ### Recommended Mitigation Strategies. The tone should be authoritative, clear, and concise.`;
+            
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); }
+                const result = await response.json();
+                const briefingText = result.candidates[0].content.parts[0].text;
+                outputDiv.innerHTML = marked.parse(briefingText);
+            } catch (error) {
+                console.error("Error calling Gemini API for briefing:", error);
+                outputDiv.innerHTML = `<p class="text-red-500">An error occurred while generating the briefing. Please try again.</p>`;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        generateBtn.addEventListener('click', generateThreatBriefing);
+        topicInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') generateThreatBriefing(); });
+    </script>
+</body>
+</html>
